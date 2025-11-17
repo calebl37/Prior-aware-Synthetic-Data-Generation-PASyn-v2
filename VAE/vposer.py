@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
+import os
 from torch.utils.data import TensorDataset, DataLoader
 
 
@@ -92,8 +93,24 @@ class VPoserWrapper:
         self.train_losses = []
         self.val_losses = []
 
+        current_epoch = 0
+        
+        #load checkpoint if there is one
+        if os.path.exists("checkpoint.pt"):
+            checkpoint = torch.load("checkpoint.pt", map_location = self.device)
+            
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            
+            current_epoch = checkpoint['epoch']
+
+
+            self.train_losses = checkpoint['train_losses']
+            self.val_losses = checkpoint['val_losses']
+
         #training loop
-        for i in range(self.epochs):
+        for i in range(current_epoch+1, self.epochs):
 
             self.model.train()
             total_loss = 0
@@ -124,11 +141,25 @@ class VPoserWrapper:
                 val_loss = criterion(X_val, x_hat, mu, logvar)
                 self.val_losses.append(val_loss)
 
+            torch.save(
+                {
+                    'epoch': i,
+                    'model_state_dict': self.model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'train_losses': self.train_losses,
+                    'val_losses': self.val_losses
+                },
+                "checkpoint.pt"
+            )
 
             if (i + 1) % (self.epochs // 10) == 0:
-                print("Epoch {} Complete: VAE Custom Train Loss = {}, Validation Loss = {}".format(i+1, avg_train_loss, val_loss))
+                print("Checkpoint saved! Epoch {} Complete: VAE Custom Train Loss = {}, Validation Loss = {}".format(i+1, avg_train_loss, val_loss))
             
     def predict(self, X) -> torch.Tensor:
+        #load checkpoint if there is one
+        if os.path.exists("checkpoint.pt"):
+            checkpoint = torch.load("checkpoint.pt", map_location = self.device)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
         self.model.eval()
         with torch.no_grad():
             output, _, _ = self.model(X)
@@ -136,7 +167,16 @@ class VPoserWrapper:
         
     def plot_losses(self):
 
-        epochs = np.arange(self.epochs)
+        #load checkpoint if there is one
+        if os.path.exists("checkpoint.pt"):
+            checkpoint = torch.load("checkpoint.pt", map_location = self.device)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            current_epoch = checkpoint['epoch']
+
+            self.train_losses = checkpoint['train_losses']
+            self.val_losses = checkpoint['val_losses']
+
+        epochs = np.arange(current_epoch)
         plt.title("Train/Val VAE Loss over time for w1 = {} and w2 = {}".format(self.w1, self.w2))
         plt.plot(epochs, self.train_losses, c='r', label="Train")
         plt.plot(epochs, self.val_losses, c='b', label="Validation")
