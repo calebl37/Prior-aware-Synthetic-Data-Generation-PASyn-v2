@@ -1,10 +1,12 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 
 
-def fully_connected_block(input_dim:int=32, output_dim: int=2, hidden_neurons:list=[16, 8, 4]):
+def fully_connected_block(input_dim:int=32, output_dim: int=2, hidden_neurons:list=[16, 8, 4]) -> nn.Module:
     '''
     A basic PyTorch Feed Forward Neural Network with LeakyReLU activation functions
     
@@ -59,43 +61,88 @@ class VPoser(nn.Module):
         return x_hat, mu, logvar
 
 class VPoserWrapper:
-    def __init__(self, n_leg_joints: int = 36, hidden_neurons: list = [32, 24], latent_dim: int = 20, lr:float=1e-3, 
-                 epochs: int=10, batch_size: int=64, optimizer_func: torch.optim.Optimizer = torch.optim.Adam):
+    def __init__(self, device: torch.device, n_leg_joints: int = 36, hidden_neurons: list = [32, 24], latent_dim: int = 20, lr:float=1e-3, 
+                 epochs: int=10, batch_size: int=64, w1: float = 0.005, w2: float = 0.01):
+        self.device = device
         self.n_leg_joints = n_leg_joints
         self.latent_dim = latent_dim
         self.model = VPoser(n_leg_joints=n_leg_joints, hidden_neurons=hidden_neurons, latent_dim=self.latent_dim)
         self.lr = lr
         self.epochs = epochs
         self.batch_size = batch_size
-        self.optimizer_func = optimizer_func
+        self.w1 = w1
+        self.w2 = w2
 
 
-    def fit(self, X):
 
-        criterion = VAELoss()
-        optimizer = self.optimizer_func(self.model.parameters(), self.lr)
+    def fit(self, X_train: torch.Tensor, X_val: torch.Tensor):
 
-        train_tensor = TensorDataset(X)
+        #GPU support
+        X_train = X_train.to(self.device)
+        X_val = X_val.to(self.device)
+
+        #Custom loss function 
+        criterion = VAELoss(w1=self.w1, w2=self.w2)
+        optimizer = torch.optim.Adam(self.model.parameters(), self.lr)
+
+        train_tensor = TensorDataset(X_train)
         train_loader = DataLoader(train_tensor, batch_size=self.batch_size, shuffle=True)
 
+        #track per-epoch seen and unseen loss
+        self.train_losses = []
+        self.val_losses = []
+
+        #training loop
         for i in range(self.epochs):
 
-            total_loss = 0
             self.model.train()
+            total_loss = 0
             for batch in train_loader:   
                 imgs = batch[0]
+
+                #output reconstruction plus latent space parameters
                 x_hat, mu, logvar = self.model(imgs)
-                loss = criterion(imgs, x_hat, mu, logvar)
+
+                #compute batch VAE loss
+                loss: torch.Tensor = criterion(imgs, x_hat, mu, logvar)
+
+                #backprop
                 loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
+
                 total_loss += loss.item()
             
-            if (i + 1) % 10 == 0:
-                print("Epoch {} Complete: VAE Custom Loss = {}".format(i+1, total_loss / len(train_loader)))
+            #record train loss
+            avg_train_loss = total_loss / len(train_loader)
+            self.train_losses.append(avg_train_loss)
+
+            #record validation loss
+            self.model.eval()
+            with torch.no_grad():
+                x_hat, mu, logvar = self.model(X_val)
+                val_loss = criterion(X_val, x_hat, mu, logvar)
+                self.val_losses.append(val_loss)
+
+
+            if (i + 1) % (self.epochs // 10) == 0:
+                print("Epoch {} Complete: VAE Custom Train Loss = {}, Validation Loss = {}".format(i+1, avg_train_loss, val_loss))
             
-    def generate_poses(self, X):
+    def predict(self, X) -> torch.Tensor:
         self.model.eval()
         with torch.no_grad():
             output, _, _ = self.model(X)
             return output
+        
+    def plot_losses(self):
+
+        epochs = np.arange(self.epochs)
+        plt.title("Train/Val VAE Loss over time for w1 = {} and w2 = {}".format(self.w1, self.w2))
+        plt.plot(epochs, self.train_losses, c='r', label="Train")
+        plt.plot(epochs, self.val_losses, c='b', label="Validation")
+        plt.legend()
+        plt.xlabel("Epochs")
+        plt.ylabel("VAE Custom Loss")
+        plt.savefig("losses.jpg")
+        plt.show()
+        
