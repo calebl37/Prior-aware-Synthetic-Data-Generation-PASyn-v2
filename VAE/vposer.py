@@ -63,16 +63,18 @@ class VPoser(nn.Module):
 
 class VPoserWrapper:
     def __init__(self, device: torch.device, n_leg_joints: int = 36, hidden_neurons: list = [32, 24], latent_dim: int = 20, lr:float=1e-3, 
-                 epochs: int=10, batch_size: int=64, w1: float = 0.005, w2: float = 0.01):
+                 epochs: int=250, batch_size: int=128 , w1: float = 0.005, w2: float = 0.01):
         self.device = device
         self.n_leg_joints = n_leg_joints
+
         self.latent_dim = latent_dim
-        self.model = VPoser(n_leg_joints=n_leg_joints, hidden_neurons=hidden_neurons, latent_dim=self.latent_dim)
-        self.lr = lr
-        self.epochs = epochs
-        self.batch_size = batch_size
-        self.w1 = w1
-        self.w2 = w2
+
+        self.model = VPoser(n_leg_joints=self.n_leg_joints, hidden_neurons=hidden_neurons, latent_dim=self.latent_dim)
+        self.lr = lr 
+        self.epochs = epochs 
+        self.batch_size = batch_size 
+        self.w1 = w1 
+        self.w2 = w2 
 
 
 
