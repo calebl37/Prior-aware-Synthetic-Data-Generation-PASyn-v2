@@ -147,7 +147,6 @@ class BoneWrapper:
         Returns: None
         '''
     
-        
         if self.parent is None:
             return
             
@@ -174,10 +173,7 @@ class BoneWrapper:
                 
             else:
                 poseRot3D = rotate3D(diffX, 0, 0)
-                
-        
-                
-        
+                 
         #this bone does not use VAE priors, so generate rotation randomly         
         else:
                 
@@ -186,32 +182,19 @@ class BoneWrapper:
             noiseX, noiseY, noiseZ = self.get_rand_rot()
             poseRot3D = rotate3D(noiseX,noiseY,noiseZ)
             
-        
-        
-    
-        
         #retrieve 3x3 rotation matrix of the parent of this bone
         parentPoseRot3D = np.array(self.parent.matrix_basis)[:3, :3]
         
-        
-        
-        
-    
-        
         #apply the parent rotation to this bone's rotation using inverse kinematics
         finalPoseRot3D = np.linalg.inv(parentPoseRot3D) @ poseRot3D
-        
         
         #apply the parent-aware 3D rotation matrix of this bone using the blender API
         #which requires a 4D rotation matrix (quaternion)
         poseRot4D = np.eye(4)
         poseRot4D[:3,:3] = finalPoseRot3D 
-            
-        
-            
+             
         self.poseBone.matrix_basis = poseRot4D.T
-        
-        
+    
         #update the given frame of the animation with this bone's rotation
         blSet = self.poseBone.keyframe_insert('rotation_quaternion', frame = frame_number)
         
@@ -277,15 +260,9 @@ if __name__ == '__main__':
     #set up armature
     armature = bpy.data.objects["metarig"]
     
-    #load full VAE priors (original)
-    vae_prior_pth: str = "vae_prior.npz"
-    vae_data_raw = np.load(vae_prior_pth)
-    all_vae_priors = np.array(vae_data_raw['poses'])
-    
     #use custom VAE priors
     all_vae_priors = np.load("my_vae_poses.npy")
 
-    
     #set up bone wrappers in order
     bone_dict = dict()
     
@@ -300,8 +277,10 @@ if __name__ == '__main__':
     
     bone_dict['upperleg.R'] = BoneWrapper(armature = armature, bone_name="upperleg.R", 
     init_rot=(74,0,0), all_vae_priors=all_vae_priors, vae_prior_indices=(9,10,11))
+    
     bone_dict['frontleg.R'] = BoneWrapper(armature = armature, bone_name="frontleg.R", 
     init_rot=(-50,0,0), all_vae_priors=all_vae_priors, vae_prior_indices=(12,13,14))
+
     bone_dict['forearm.R'] = BoneWrapper(armature = armature, bone_name="forearm.R", 
     init_rot=(0,0,0), all_vae_priors=all_vae_priors, vae_prior_indices=(15,16,17))
     
