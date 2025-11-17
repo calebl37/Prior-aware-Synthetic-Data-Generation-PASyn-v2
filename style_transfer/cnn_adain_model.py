@@ -4,7 +4,7 @@ import torch.nn as nn
 import os
 from torch.utils.data import TensorDataset, DataLoader
 
-def conv_encoder(input_channels: int, output_channels: int, hidden_channels: list[int], add_bias = False):
+def conv_encoder(input_channels: int, output_channels: int, hidden_channels: list[int], add_bias = False) -> nn.Module:
     layers = []
     layers.append(nn.Conv2d(input_channels, hidden_channels[0], kernel_size=4, stride=2, padding=1, bias=add_bias))
     layers.append(nn.LeakyReLU(0.2, True))
@@ -17,7 +17,7 @@ def conv_encoder(input_channels: int, output_channels: int, hidden_channels: lis
             *layers
     )
 
-def conv_decoder(input_channels: int, output_channels: int, hidden_channels: list[int], add_bias: bool = False):
+def conv_decoder(input_channels: int, output_channels: int, hidden_channels: list[int], add_bias: bool = False) -> nn.Module:
 
     layers = []
     layers.append(nn.ConvTranspose2d(input_channels, hidden_channels[0], kernel_size=4, stride=2, padding=1, bias=add_bias))
@@ -33,10 +33,10 @@ def conv_decoder(input_channels: int, output_channels: int, hidden_channels: lis
             *layers
     )
 
-def calc_content_loss(out_feat: torch.Tensor, target_feat: torch.Tensor):
+def calc_content_loss(out_feat: torch.Tensor, target_feat: torch.Tensor) -> torch.Tensor:
     return torch.mean((out_feat - target_feat) ** 2)
  
-def calc_style_loss(out_feats: torch.Tensor, style_feats: torch.Tensor):
+def calc_style_loss(out_feats: torch.Tensor, style_feats: torch.Tensor) -> torch.Tensor:
     loss = 0.0
     for of, sf in zip(out_feats, style_feats):
         o_mean, o_std = of.mean([2, 3]), of.std([2, 3])
@@ -45,7 +45,7 @@ def calc_style_loss(out_feats: torch.Tensor, style_feats: torch.Tensor):
     return loss
 
 # AdaIN function
-def adain(content_feat: torch.Tensor, style_feat: torch.Tensor, eps=1e-5):
+def adain(content_feat: torch.Tensor, style_feat: torch.Tensor, eps=1e-5) -> torch.Tensor:
     c_mean = content_feat.mean(dim=[2, 3], keepdim=True)
     c_std = content_feat.std(dim=[2, 3], keepdim=True)
     s_mean = style_feat.mean(dim=[2, 3], keepdim=True)
@@ -71,7 +71,11 @@ class ConvStyleTransfer:
         self.style_weight = style_weight
         self.batch_size = batch_size
         
-    def fit(self, X, y):
+    def fit(self, X: torch.Tensor, y: torch.Tensor):
+
+        #GPU support
+        X = X.to(self.device)
+        y = y.to(self.device)
         
         
         dataloader = DataLoader(TensorDataset(X, y), batch_size=self.batch_size, shuffle=True)
@@ -89,23 +93,21 @@ class ConvStyleTransfer:
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             
             current_epoch = checkpoint['epoch']
+
+            self.losses = checkpoint['losses']
         
         
-        
+        #training loop
         for epoch in range(current_epoch+1, self.epochs):
             
             self.model.train()
             
-            losses = []
+            self.losses = []
             for content, style in dataloader:
-                
-                #GPU support
-                content = content.to(self.device)
-                style = style.to(self.device)
     
                 # Encode
-                c_feat = self.encoder(content)
-                s_feat = self.encoder(style)
+                c_feat: torch.Tensor  = self.encoder(content)
+                s_feat: torch.Tensor  = self.encoder(style)
 
                 # AdaIN
                 t_feat = c_feat * (1-self.alpha) + self.alpha * adain(c_feat, s_feat)
@@ -115,14 +117,19 @@ class ConvStyleTransfer:
 
                 # Compute features again
                 out_feat = self.encoder(output)
-                style_out_feats = [self.encoder[:i+1](output) for i in range(len(self.encoder)-1)]
+
+                #output encodings at each layer
+                cum_out_feats = [self.encoder[:i+1](output) for i in range(len(self.encoder)-1)]
+                
+                #style encodings at each layer
+                cum_style_feats = [self.encoder[:i+1](style) for i in range(len(self.encoder)-1)]
 
                 # Loss: weighted sum of content loss and cumulative style loss per layer
                 content_loss = calc_content_loss(out_feat, t_feat.detach())
-                style_loss = calc_style_loss(style_out_feats, [self.encoder[:i+1](style) for i in range(len(self.encoder)-1)])
+                style_loss = calc_style_loss(cum_out_feats, cum_style_feats)
                 loss = self.content_weight * content_loss + self.style_weight * style_loss
                 
-                losses.append(loss.item())
+                self.losses.append(loss.item())
 
                 # Backprop
                 optimizer.zero_grad()
@@ -135,20 +142,21 @@ class ConvStyleTransfer:
                 {
                     'epoch': epoch,
                     'model_state_dict': self.model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict()
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'losses': self.losses
                 },
                 "checkpoint.pt"
             )
-            print("Checkpoint saved: Epoch {} complete: Average Loss = {}".format(epoch, np.mean(losses)))
+            print("Checkpoint saved: Epoch {} complete: Average Loss = {}".format(epoch, np.mean(self.losses)))
             
             
     #styles the background (content) to match the zebra (style), and then composites the zebra with the stylized background
     #using the alpha channel (PNG foreground/background pixel map) of the zebra
-    def blend(self, content, style, alpha):
+    def blend(self, content: torch.Tensor, style: torch.Tensor, png_map: torch.Tensor, alpha: float = 0.1):
         
         content = content.to(self.device)
         style = style.to(self.device)
-        alpha = alpha.to(self.device)
+        png_map = png_map.to(self.device)
         
         #load checkpoint if there is one
         if os.path.exists("checkpoint.pt"):
@@ -163,12 +171,12 @@ class ConvStyleTransfer:
             s_feat = self.encoder(style)
 
             # AdaIN
-            t_feat = (1-self.alpha) * c_feat + self.alpha * adain(c_feat, s_feat)
+            t_feat = (1-alpha) * c_feat + alpha * adain(c_feat, s_feat)
 
             # Decode
             stylized_bg = self.decoder(t_feat)
             
             # Overlay the PNG synthetic zebra over the stylized backhground
-            composite = alpha * style + (1 - alpha) * stylized_bg
+            composite = png_map * style + (1 - png_map) * stylized_bg
             
             return composite
