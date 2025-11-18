@@ -18,7 +18,8 @@ if __name__ == "__main__":
     kwargs = {i: j for i, j in args if j is not None}
 
 
-    #load 3 datasets - the leg poses from other low poly animated 3D animal models
+    #load 3 datasets - the XYZ angles of leg poses from other low poly animated 3D animal models
+    #skip the first 3 columns of every row because they are the XYZ angles of the T-pose (trivial)
     train_leg_poses_other_animals = torch.tensor(
     np.load(os.path.join("data", "train_poses_refine.npz"))["poses"][:, 3:], dtype=torch.float32)
 
