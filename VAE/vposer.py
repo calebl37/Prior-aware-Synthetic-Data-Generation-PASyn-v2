@@ -124,7 +124,7 @@ class VPoser(nn.Module):
 
 class VPoserWrapper:
     '''
-    A scikit-learn wrapper for the VPoser PyTorch model. Handles training on existing leg poses and generation of new leg poses, 
+    A scikit-learn wrapper for the VPoser PyTorch model that implements fit() and predict(). Handles training on existing leg poses and generation of new leg poses, 
     as well as hyperparameter tuning, seen and unseen loss plotting, and model checkpoint saving.
     
     Args:
@@ -133,8 +133,8 @@ class VPoserWrapper:
         -hidden_neurons (list): number of neurons in each layer of the encoder, and reversed for the decoder
         -latent_dim (int): dimension of the latent space
         -lr (float): learning rate for VPoser training
-        -epochs: number of forward and backward passes in the training loop
-        -batch_size: size per batch in training
+        -epochs (int): number of forward and backward passes in the training loop
+        -batch_size (int): size per batch in training
         -w1 (float): weight of the KL divergence loss term
         -w2 (float): weight of the reconstruction loss term
 
