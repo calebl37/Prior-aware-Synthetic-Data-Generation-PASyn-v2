@@ -152,11 +152,11 @@ class ConvStyleTransfer:
             
     #styles the background (content) to match the zebra (style), and then composites the zebra with the stylized background
     #using the alpha channel (PNG foreground/background pixel map) of the zebra
-    def blend(self, content: torch.Tensor, style: torch.Tensor, png_map: torch.Tensor, alpha: float = 0.1):
+    def stylize(self, content: torch.Tensor, style: torch.Tensor, alpha: float = 0.1):
         
+        #GPU support
         content = content.to(self.device)
         style = style.to(self.device)
-        png_map = png_map.to(self.device)
         
         #load checkpoint if there is one
         if os.path.exists("checkpoint.pt"):
@@ -174,9 +174,6 @@ class ConvStyleTransfer:
             t_feat = (1-alpha) * c_feat + alpha * adain(c_feat, s_feat)
 
             # Decode
-            stylized_bg = self.decoder(t_feat)
-            
-            # Overlay the PNG synthetic zebra over the stylized backhground
-            composite = png_map * style + (1 - png_map) * stylized_bg
-            
-            return composite
+            stylized_images = self.decoder(t_feat)
+
+            return stylized_images
