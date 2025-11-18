@@ -12,11 +12,12 @@ def fully_connected_block(input_dim:int=32, output_dim: int=2, hidden_neurons:li
     A basic PyTorch Feed Forward Neural Network with LeakyReLU activation functions
     
     Args:
-        -input_dim: number of neurons in input layer
-        -output_dim: number of neurons in output layer
-        -hidden_neurons:
-    
-    
+        -input_dim (int): number of neurons in input layer
+        -output_dim (int): number of neurons in output layer
+        -hidden_neurons (list): hidden_neurons[i] = number of neurons in hidden layer i
+        -output_dim (int): number of neurons in output layer
+    Returns:
+        nn.Module: A PyTorch nn.Sequential object
     '''
     layers = []
     layers.append(nn.Linear(input_dim, hidden_neurons[0]))
@@ -29,39 +30,115 @@ def fully_connected_block(input_dim:int=32, output_dim: int=2, hidden_neurons:li
 
 
 class VAELoss(nn.Module):
+    '''
+    A custom loss function for a VAE that balances reconstruction loss 
+    (SSE between the original input and VAE output) with KL divergence loss 
+    (distance between the latent space and a normal distribution)
+    
+    Args:
+        -w1 (float): weight of the KL divergence loss term
+        -w2 (float): weight of the reconstruction loss term
+
+    '''
     def __init__(self, w1: float=0.005, w2:float=0.01):
         super().__init__()
         self.w1=w1
         self.w2=w2
 
-    def forward(self, x, x_hat, mu, logvar):
+    def forward(self, x: torch.Tensor, x_hat: torch.Tensor, mu: torch.Tensor, logvar: torch.Tensor):
+        '''
+        PyTorch forward pass
+        
+        Args:
+            -x (tensor): shape (n, n_leg_joints * 3), the original leg pose XYZ angles 
+            -x_hat (tensor): shape (n, n_leg_joints * 3), the reconstructed leg pose XYZ angles 
+            -mu (tensor): shape (latent_dim, ), the mean of the latent space
+            -logvar: shape (latent_dim, ), the variance of the latent space
+        Returns:
+            tensor: loss with gradient attached
+        '''
         recon_loss = F.mse_loss(x_hat, x, reduction='sum')
         kl_loss = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
         return (self.w1 * recon_loss + self.w2 * kl_loss)
 
 class VPoser(nn.Module):
+    
+    '''
+    A PyTorch nn.Module implementation of a variational autoencoder with a custom loss function
+    
+    Args:
+        -n_leg_joints (int): number of leg joints of the animal
+        -hidden_neurons (list): number of neurons in each layer of the encoder, and reversed for the decoder
+        -latent_dim (int): dimension of the latent space
+
+    '''
     def __init__(self, n_leg_joints: int = 36, hidden_neurons: list = [32, 24], latent_dim: int = 20):
         super().__init__()
 
+        #build encoder 
         self.encoder = fully_connected_block(input_dim = n_leg_joints, output_dim= hidden_neurons[-1], hidden_neurons=hidden_neurons[:-1])
+        
+        #generate the mean and variance from the latent space
         self.fc_mu = nn.Linear(hidden_neurons[-1], latent_dim)
         self.fc_logvar = nn.Linear(hidden_neurons[-1], latent_dim)
+
+        #build decoder
         self.decoder = fully_connected_block(input_dim = latent_dim, output_dim= n_leg_joints, hidden_neurons=hidden_neurons[::-1])
 
-    def reparameterize(self, mu, logvar):
+    def reparameterize(self, mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
+        '''
+        The reparameterization trick to sample from the latent space
+        Args:
+            -mu (tensor): shape (latent_dim, ), the mean of the latent space
+            -logvar: shape (latent_dim, ), the variance of the latent space
+        Returns:
+            tensor: a random sample of shape (latent_dim, ) from a normal distribution shifted by mu and scaled by logvar
+        '''
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + eps * std
 
-    def forward(self, x):
+    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        '''
+        PyTorch forward pass
+        
+        Args:
+            -x (tensor): shape (n, n_leg_joints * 3), the original leg pose XYZ angles 
+        Returns:
+            tensor: shape (n, n_leg_joints * 3), the reconstructed leg pose XYZ angles 
+        '''
+
+        #encode the input in the latent space
         encoder_out = self.encoder(x)
+
+        #get the mean and variance from the latent space
         mu = self.fc_mu(encoder_out)
         logvar = self.fc_logvar(encoder_out)
+
+        #apply the reparameterization trick to sample a vector from the latent space
         z = self.reparameterize(mu, logvar)
+
+        #decode the sample
         x_hat = self.decoder(z)
         return x_hat, mu, logvar
 
 class VPoserWrapper:
+    '''
+    A scikit-learn wrapper for the VPoser PyTorch model. Handles training on existing leg poses and generation of new leg poses, 
+    as well as hyperparameter tuning, seen and unseen loss plotting, and model checkpoint saving.
+    
+    Args:
+        -device: (torch.device): cpu or gpu
+        -n_leg_joints (int): number of leg joints of the animal
+        -hidden_neurons (list): number of neurons in each layer of the encoder, and reversed for the decoder
+        -latent_dim (int): dimension of the latent space
+        -lr (float): learning rate for VPoser training
+        -epochs: number of forward and backward passes in the training loop
+        -batch_size: size per batch in training
+        -w1 (float): weight of the KL divergence loss term
+        -w2 (float): weight of the reconstruction loss term
+
+    '''
     def __init__(self, device: torch.device, n_leg_joints: int = 36, hidden_neurons: list = [32, 24], latent_dim: int = 20, lr:float=1e-3, 
                  epochs: int=250, batch_size: int=128 , w1: float = 0.005, w2: float = 0.01):
         self.device = device
@@ -77,9 +154,19 @@ class VPoserWrapper:
         self.w2 = w2 
 
 
+    def fit(self, X_train: torch.Tensor, X_val: torch.Tensor) -> None:
 
-    def fit(self, X_train: torch.Tensor, X_val: torch.Tensor):
+        '''
+        Handles training of VPoser, using the specified hyperparameters, saves the model state peridiodically,
+        records train and validation loss over time
 
+        Args:
+            X_train (tensor): the XYZ angles of seen leg poses to train on 
+            X_val (tensor): the XYZ angles of unseen leg poses to evaluate on 
+
+        Returns:
+            None
+        '''
         #GPU support
         X_train = X_train.to(self.device)
         X_val = X_val.to(self.device)
@@ -158,16 +245,39 @@ class VPoserWrapper:
                 print("Checkpoint saved! Epoch {} Complete: VAE Custom Train Loss = {}, Validation Loss = {}".format(i+1, avg_train_loss, val_loss))
             
     def predict(self, X) -> torch.Tensor:
+
+        '''
+        Generates new lew poses from the given ones, using the last saved checkpoint of the VPoser model
+
+        Args:
+            X (tensor): shape (m, n_leg_joint*3), the XYZ angles of seen leg poses to generate new ones from
+           
+        Returns:
+            tensor: shape (m, n_leg_joint*3), the XYZ angles of new leg poses generated by VPoser
+        '''
+
         #load checkpoint if there is one
         if os.path.exists("checkpoint.pt"):
             checkpoint = torch.load("checkpoint.pt", map_location = self.device)
             self.model.load_state_dict(checkpoint['model_state_dict'])
+
+        #get the direct VAE reconstruction with a single forward pass
         self.model.eval()
         with torch.no_grad():
             output, _, _ = self.model(X)
             return output
         
-    def plot_losses(self):
+    def plot_losses(self) -> None:
+
+        '''
+        Uses the last saved checkpoint of VPoser to plot the train and test loss over each epoch so far. 
+        Saves plot in the same directoy
+
+        Args:
+            None
+        Returns:
+            None
+        '''
 
         #load checkpoint if there is one
         if os.path.exists("checkpoint.pt"):
