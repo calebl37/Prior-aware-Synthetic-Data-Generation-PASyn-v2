@@ -137,6 +137,7 @@ class VPoserWrapper:
         -batch_size (int): size per batch in training
         -w1 (float): weight of the KL divergence loss term
         -w2 (float): weight of the reconstruction loss term
+        -checkpoint_path (str): path to save model checkpoints
 
     '''
     def __init__(self, device: torch.device, n_leg_joints: int = 36, hidden_neurons: list = [32, 24], latent_dim: int = 20, lr:float=1e-3, 
