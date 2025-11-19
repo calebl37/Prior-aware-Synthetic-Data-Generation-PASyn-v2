@@ -265,17 +265,18 @@ class ConvStyleTransfer:
         dataloader = DataLoader(TensorDataset(X, y), batch_size=self.batch_size, shuffle=True)
                 
         self.current_epoch = 0
+
+        self.losses = []
         
         #load checkpoint if there is one
         self.load_checkpoint()
             
-        
         #training loop
-        for epoch in range(self.current_epoch+1, self.epochs):
+        for epoch in range(self.current_epoch, self.epochs):
             
             self.model.train()
             
-            self.losses = []
+            epoch_losses = []
             for content, style in dataloader:
     
                 # Encode
@@ -302,7 +303,7 @@ class ConvStyleTransfer:
                 style_loss = calc_style_loss(cum_out_feats, cum_style_feats)
                 loss = self.l_content_weight * content_loss + self.l_style_weight * style_loss
                 
-                self.losses.append(loss.item())
+                epoch_losses.append(loss.item())
 
                 # Backprop
                 self.optimizer.zero_grad()
@@ -310,13 +311,15 @@ class ConvStyleTransfer:
                 self.optimizer.step()
             
             self.model.eval()
+
+            self.losses.append(np.mean(epoch_losses))
             
             #save checkpoint
             torch.save(
                 {
                     'height': self.height,
                     'width': self.width,
-                    'epoch': epoch,
+                    'epoch': epoch+1,
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'losses': self.losses
