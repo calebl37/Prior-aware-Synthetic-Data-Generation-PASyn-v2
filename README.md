@@ -7,7 +7,7 @@ Follow these steps to run the complete PASyn-v2 pipeline:
 
 ```bash
 # 1. Install dependencies
-pip install torch torchvision numpy matplotlib pillow
+pip install -r requirements.txt
 
 # 2. Train the VAE model
 cd VAE
@@ -53,7 +53,7 @@ blender -b custom_zebra.blend -P animation_script.py
 
 ### Python Dependencies
 ```bash
-pip install torch torchvision numpy matplotlib pillow
+pip install -r requirements.txt
 ```
 
 ### Blender (for 3D animation)
@@ -245,8 +245,8 @@ After running the pipeline, you should see:
   - Diversity in poses shows effective latent space exploration
 
 ### Animation Output
-- **Joint Coordinates** (`blender/blender_gt.npy`): Array of shape `(n_frames, 34)`
-  - Contains 2D (x, y) coordinates for 17 joints per frame
+- **Joint Coordinates** (`blender/blender_gt.npy`): Array of shape `(n_frames, 38)`
+  - Contains 2D (x, y) coordinates for 19 joints per frame
   - Used for training pose estimation models
   - Realistic motion patterns indicate successful prior integration
 
@@ -275,8 +275,8 @@ After running the pipeline, you should see:
    import numpy as np
    import matplotlib.pyplot as plt
    coords = np.load('blender/blender_gt.npy')
-   # Reshape to (n_frames, 17, 2)
-   coords = coords.reshape(-1, 17, 2)
+   # Reshape to (n_frames, 19, 2)
+   coords = coords.reshape(-1, 19, 2)
    # Plot trajectory of first joint
    plt.plot(coords[:, 0, 0], coords[:, 0, 1])
    plt.title('Joint Trajectory')
