@@ -3,19 +3,31 @@ import numpy as np
 import torch
 from vposer import VPoserWrapper
 import argparse
+import random
 
 if __name__ == "__main__":
 
     #get VAE hyperparameters from the command line
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_leg_joints', type = int, default=36)
-    parser.add_argument('--epochs', type=int, default=250)
-    parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--w1', type=float, default=0.005)
-    parser.add_argument('--w2', type=float, default=0.01)
+    parser.add_argument('--n_leg_joints', type = int, default=36, help='Total number of leg joints')
+    parser.add_argument('--epochs', type=int, default=250, help='Number of training epochs')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')
+    parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
+    parser.add_argument('--w1', type=float, default=0.005, help='Weight of KL divergence loss (default: 0.005)')
+    parser.add_argument('--w2', type=float, default=0.01, help='Weight of reconstruction loss (default: 0.01)')
+    parser.add_argument('--seed', type=int, default=999, help='Random seed for reproducibility (default: 999)')
+
     args = parser.parse_args()._get_kwargs()
-    kwargs = {i: j for i, j in args if j is not None}
+    kwargs = {i: j for i, j in args}
+
+    # Set random seed for reproducibility
+    seed = kwargs.pop('seed')
+    random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(seed)
+    torch.use_deterministic_algorithms(True)
+    print(f"Random Seed: {seed}")
 
 
     #load 3 datasets - the XYZ angles of leg poses from other low poly animated 3D animal models
