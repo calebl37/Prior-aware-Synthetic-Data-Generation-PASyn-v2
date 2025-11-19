@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     #get number of desired frames from the command line
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_frames', type=int)
+    parser.add_argument('--n_frames', type=int, default=3000)
     args = parser.parse_args()
     n_frames = args.n_frames
 
