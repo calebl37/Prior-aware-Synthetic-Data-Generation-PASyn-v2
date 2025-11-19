@@ -11,21 +11,21 @@ pip install -r requirements.txt
 
 # 2. Train the VAE model
 cd VAE
-python train.py --epochs 250 --batch_size 128 --lr 0.001
+python train.py --epochs=250 --batch_size=128 --lr=0.001 --w1=0.005 --w2=0.01
 
-# 3. Generate new poses
-python generate.py --n_frames 1000
+# 3. Generate new leg poses
+python generate.py --n_frames 3000
 
 # 4. Animate 3D model in Blender (optional)
 cd ../blender
-blender -b custom_zebra.blend -P animation_script.py
+blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=128 --width=128
 ```
 
 **Expected Output:**
 - Trained VAE model (`VAE/checkpoint.pt`)
 - Training loss visualization (`VAE/losses.jpg`)
-- Generated pose sequences (`blender/my_vae_poses.npy`)
-- 2D joint coordinates (`blender/blender_gt.npy`)
+- Generated leg pose sequences (`blender/my_vae_poses.npy`)
+- 2D joint cartesian coordinates (`blender/blender_gt.npy`)
 
 ## Key Improvements Over Original PASyn
 
@@ -105,11 +105,11 @@ python train.py --epochs 250 --batch_size 128 --lr 0.001 --w1 0.005 --w2 0.01
 Generate new pose sequences using the trained VAE:
 
 ```bash
-python generate.py --n_frames 1000
+python generate.py --n_frames 3000
 ```
 
 **Parameters:**
-- `--n_frames`: Number of frames to generate (default: 1000)
+- `--n_frames`: Number of frames to generate (default: 3000)
 
 **Output:**
 - `../blender/my_vae_poses.npy`: Generated pose sequences
@@ -120,12 +120,17 @@ Run the Blender animation script:
 
 ```bash
 cd ../blender
-blender -b custom_zebra.blend -P animation_script.py
+blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=128 --width=128
 ```
 
+**Parameters:**
+- `--n_frames`: Length of animation (default: 3000)
+- `--height`: height of image in each rendered frame (default: 128)
+- `--width`: width of image in each rendered frame (default: 128)
+
 **Output:**
-- Rendered frames of animated zebra
-- `blender_gt.npy`: 2D joint coordinates for each frame
+-  Rendered frames of animated zebra, 
+- `blender_gt.npy`: 2D joint Cartesian Coordinates for each frame
 
 ### Step 4: Apply Style Transfer (Optional)
 
