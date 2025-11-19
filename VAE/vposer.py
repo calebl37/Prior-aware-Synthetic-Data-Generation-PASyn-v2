@@ -215,7 +215,7 @@ class VPoserWrapper:
         self.load_checkpoint()
 
         #training loop
-        for i in range(self.current_epoch+1, self.epochs):
+        for i in range(self.current_epoch, self.epochs):
 
             self.model.train()
             total_loss = 0
@@ -248,7 +248,7 @@ class VPoserWrapper:
 
             torch.save(
                 {
-                    'epoch': i,
+                    'epoch': i+1,
                     'model_state_dict': self.model.state_dict(),
                     'optimizer_state_dict': self.optimizer.state_dict(),
                     'train_losses': self.train_losses,
