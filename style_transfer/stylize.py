@@ -75,6 +75,8 @@ if __name__ == "__main__":
 
     #overlay the PNG blender zebras with the stylized backgrounds
     fake_zebra_alphas.to(device)
+    stylized_bgs.to(device)
+
     composite = fake_zebra_alphas * fake_zebra_images + (1 - fake_zebra_alphas) * stylized_bgs
 
     #save tensor format
