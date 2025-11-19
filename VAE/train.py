@@ -15,7 +15,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training')
     parser.add_argument('--w1', type=float, default=0.005, help='Weight of KL divergence loss (default: 0.005)')
     parser.add_argument('--w2', type=float, default=0.01, help='Weight of reconstruction loss (default: 0.01)')
-    parser.add_argument('--seed', type=int, default=999, help='Random seed for reproducibility (default: 999)')
+    parser.add_argument('--seed', type=int, default=5, help='Random seed for reproducibility (default: 5)')
 
     args = parser.parse_args()._get_kwargs()
     kwargs = {i: j for i, j in args}
