@@ -14,7 +14,7 @@ cd VAE
 python train.py --epochs=250 --batch_size=128 --lr=0.001 --w1=0.005 --w2=0.01
 
 # 3. Generate new leg poses
-python generate.py --n_frames 3000
+python generate.py --n_frames=3000
 
 # 4. Animate 3D model in Blender (optional)
 cd ../blender
@@ -85,7 +85,7 @@ First, train the VAE on existing pose data:
 
 ```bash
 cd VAE
-python train.py --epochs 250 --batch_size 128 --lr 0.001 --w1 0.005 --w2 0.01
+python train.py --epochs=250 --batch_size=128 --lr 0.001 --w1=0.005 --w2=0.01 --n_leg_joints=36
 ```
 
 **Parameters:**
@@ -105,7 +105,7 @@ python train.py --epochs 250 --batch_size 128 --lr 0.001 --w1 0.005 --w2 0.01
 Generate new pose sequences using the trained VAE:
 
 ```bash
-python generate.py --n_frames 3000
+python generate.py --n_frames=3000
 ```
 
 **Parameters:**
@@ -138,8 +138,12 @@ Apply style transfer to make backgrounds more realistic:
 
 ```bash
 cd ../style_transfer
-python stylize.py
+python stylize.py --height=128 --width=128 --alpha=0.1
 ```
+**Parameters:**
+- `--height`: desired height of stylized image (must be consistent with the dimensions of the style transfer model) (default: 128)
+- `--width`: desired width of stylized image (must be consistent with the dimensions of the style transfer model) (default: 128)
+- `--alpha`: controls the strength of zebra stylization applied to the background (0 to 1, with 1 being strongest) (default: 0.1)
 
 ## Comparison: Original PASyn vs PASyn-v2
 
