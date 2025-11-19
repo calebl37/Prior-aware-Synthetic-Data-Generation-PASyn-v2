@@ -107,7 +107,7 @@ if __name__ == "__main__":
         if all_images.shape[0] % 2 == 1:
             all_images = all_images[1:]
 
-        split_idx = all_images.shape[0] * 0.5
+        split_idx = int(all_images.shape[0] * 0.5)
         content_images = all_images[:split_idx]
         style_images = all_images[split_idx:]
         print(f"Split into {content_images.shape[0]} content images and {style_images.shape[0]} style images")
