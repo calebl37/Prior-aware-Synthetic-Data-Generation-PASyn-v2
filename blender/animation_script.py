@@ -5,6 +5,9 @@ import math
 import mathutils
 import random
 from typing import Tuple
+import os
+import argparse
+import sys
 
 
 #x rotation matrix given input in degrees
@@ -240,11 +243,41 @@ class BoneWrapper:
             
 if __name__ == '__main__':
     
-    
     #set up scene
     scene = bpy.context.scene
     
-    #image dimensions (currently set to 1920x1080)
+    #get the number of animation frames and render size from the command line
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n_frames', type=int, default=3000)
+    parser.add_argument('--height', type=int, default=128)
+    parser.add_argument('--width', type=int, default=128)
+    
+    argv = sys.argv
+
+    # Blender passes tons of args (including the script name)
+    # We only want the args *after* the special "--"
+    if "--" in argv:
+        argv = argv[argv.index("--") + 1:]
+    else:
+        # No custom args provided
+        argv = []
+    args = parser.parse_args(argv)
+
+    
+    # Set the render resolution
+    scene.render.resolution_x = args.width  
+    scene.render.resolution_y = args.height  
+
+    # Set the resolution percentage (e.g., 50% for half resolution)
+    scene.render.resolution_percentage = 100 # Set to 100% for full resolution
+
+    # Set pixel aspect ratio if needed (usually left at 1.0)
+    scene.render.pixel_aspect_x = 1.0
+    scene.render.pixel_aspect_y = 1.0
+
+    print(f"Render resolution set to: {scene.render.resolution_x}x{scene.render.resolution_y} at {scene.render.resolution_percentage}%")
+    
+    #image dimensions (based on the render size set in the Blender GUI)
     render_scale = scene.render.resolution_percentage / 100
     render_size = (
         int(scene.render.resolution_x * render_scale),
@@ -252,13 +285,12 @@ if __name__ == '__main__':
     width = render_size[0]
     height = render_size[1]
     
-    print(width, height)
-    
     #set up camera
     camera = bpy.data.objects["Camera"]
     
     #set up armature
     armature = bpy.data.objects["metarig"]
+    
     
     #use custom VAE priors
     all_vae_priors = np.load("my_vae_poses.npy")
@@ -336,14 +368,17 @@ if __name__ == '__main__':
     init_rot=(0,0,0), all_vae_priors=all_vae_priors, x_rot_range=(0,0), y_rot_range = (0, 0), z_rot_func = lambda x: -x)
     
     
-    #set number of frames in the animation
-    numFrames = 1000
-    
+    #clear animation before creating a new one
+    armature.animation_data_clear()
+        
     #for each frame, store a list of (x,y) coordinates for each joint
     coordinates_2D_across_frames = []
     
+    #number of frames
+    n_frames = args.n_frames
+    
     #for each frame in the animation
-    for i in range(0, numFrames):
+    for i in range(0, n_frames):
         
         #reset the order of joints to be recorded
         order = setOrder()
@@ -377,7 +412,24 @@ if __name__ == '__main__':
         for joint in order:
             coordinates2D_frame_i += order[joint]
         coordinates_2D_across_frames.append(coordinates2D_frame_i)
-            
+      
+    #save the ground truth locally      
     np.save("blender_gt.npy", coordinates_2D_across_frames)
+    
+    #set the render output path (DO NOT CHANGE)
+    output_directory = os.path.join(os.path.dirname(os.path.dirname(bpy.data.filepath)), "style_transfer", "data", "synthetic", "zebra")
+    scene.render.filepath = output_directory
+
+    #set the render format to PNG images
+    scene.render.image_settings.file_format = 'PNG'
+
+    #render the animation
+    bpy.context.scene.frame_start = 0
+    bpy.context.scene.frame_end = n_frames-1
+    bpy.ops.render.render(animation=True)
+
+    print("{} animation frames rendered".format(n_frames))
+
+
  
 
