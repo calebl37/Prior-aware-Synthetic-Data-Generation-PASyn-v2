@@ -7,6 +7,9 @@ Follow these steps to run the complete PASyn-v2 pipeline:
 
 ```bash
 # 1. Install dependencies
+conda create --name pasynv2 python=3.10.9
+conda activate pasynv2
+
 pip install -r requirements.txt
 
 # 2. Train the VAE model
