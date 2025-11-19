@@ -8,7 +8,7 @@ import os
 import argparse
 import math
 import matplotlib.pyplot as plt
-from cnn_adain_model import ConvStyleTransfer, reshape_image_block
+from cnn_adain_model import ConvStyleTransfer
 
 
 def rgba_loader(path):
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     synthetic_dataset = dset.ImageFolder(root=os.path.join("data", "synthetic_images"),
                                         loader=rgba_loader,
                                         transform=transforms.Compose([transforms.ToTensor(),
-                                                                    transforms.CenterCrop((image_height,image_width))]))
+                                                                    transforms.Resize((image_height,image_width))]))
 
     #separate the RGB data from the alpha channel (PNG map 0 for transparent, 1 for opaque)
     fake_zebra_images = torch.stack([t[0][:3, :, :] for t in synthetic_dataset], dim = 0)
@@ -66,13 +66,22 @@ if __name__ == "__main__":
     #overlay the PNG blender zebras with the stylized backgrounds
     composite = fake_zebra_alphas * fake_zebra_images + (1 - fake_zebra_alphas) * stylized_bgs
 
-    print(composite.shape)
+    #save tensor format
+    torch.save(composite, 'stylized_images.pt')
     
-    plt.figure(figsize=(4,4))
+
+    #show a few of them
+    plt.figure(figsize=(8,8))
     plt.axis("off")
     plt.title("Stylized Zebras")
     plt.imshow(np.transpose(vutils.make_grid(composite[:16], nrow=4, padding=1, normalize=False).cpu(),(1,2,0)))
     plt.show()
+
+    #save to image folder
+    if not os.path.exists("stylized_images"):
+        os.mkdir("stylized_images")
+    for i in range(composite.shape[0]):
+        vutils.save_image(composite[i], os.path.join("stylized_images", "stylized_zebra_{}.jpg".format(i)))
     
 
 
