@@ -19,6 +19,13 @@ python generate.py --n_frames=3000
 # 4. Animate 3D model in Blender
 cd ../blender
 blender -b custom_zebra.blend -P animation_script.py -- --n_frames=100 --height=64 --width=64
+
+# 5. Train the CNN based style transfer model
+cd style_transfer
+python train.py --epochs 5 --height=128 --width=128 --lr 0.001 --batch_size 128 --alpha=0.1 --l_content_weight=1 --l_style_weight=10.4 --train_dir=celebA
+
+# 6. Generate stylized zebra
+python stylize.py --height=128 --width=128 --alpha=0.1
 ```
 
 **Expected Output:**
@@ -132,7 +139,15 @@ blender -b custom_zebra.blend -P animation_script.py -- --n_frames=100 --height=
 -  Rendered frames of animated zebra, 
 - `blender_gt.npy`: 2D joint Cartesian Coordinates for each frame
 
-### Step 4: Apply Style Transfer (Optional)
+### Step 4: Train CNN based style transfer model
+
+Train the style transfer model to stylize a given content image with a given style image:
+
+```bash
+cd ../style_transfer
+python train.py --epochs 5 --height=128 --width=128 --lr 0.001 --batch_size 128 --alpha=0.1 --l_content_weight=1 --l_style_weight=10.4 --train_dir=celebA
+```
+### Step 5: Apply Style Transfer 
 
 Apply style transfer to make backgrounds more realistic:
 
@@ -154,10 +169,10 @@ python stylize.py --height=128 --width=128 --alpha=0.1
 | **VAE Architecture** | Complex human_body_prior | Simple fully-connected |
 | **Style Transfer** | Transformer-based (StyTR-2) | CNN-based (AdaIN) |
 | **Dependencies** | 10+ heavy packages | 5 standard packages |
-| **Training Time** | ~2-3 hours | ~30-60 minutes |
+| **Training Time** | ~1-2 days | ~30-60 minutes |
 | **Code Complexity** | High (nested configs) | Low (modular) |
-| **Memory Usage** | High (~8GB GPU) | Moderate (~4GB GPU) |
-| **Code Lines** | ~5000+ | ~800 |
+| **Memory Usage** | High (~20GB GPU) | Moderate (~15GB GPU) |
+| **Code Lines** | ~10000+ | ~1500 |
 
 ### **Visual Results**
 
@@ -200,24 +215,6 @@ Uses **Adaptive Instance Normalization (AdaIN)**:
 - Lower memory footprint
 - Easier to train and tune
 
-## Complete Workflow Example
-
-```bash
-# 1. Train VAE
-cd VAE
-python train.py --epochs 250 --batch_size 128 --lr 0.001 --w1 0.005 --w2 0.01
-
-# 2. Generate poses
-python generate.py --n_frames 1000
-
-# 3. Animate in Blender (optional)
-cd ../blender
-blender -b custom_zebra.blend -P animation_script.py
-
-# 4. Style transfer (optional)
-cd ../style_transfer
-python stylize.py
-```
 
 ## Understanding the Results
 
