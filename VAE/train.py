@@ -8,12 +8,12 @@ if __name__ == "__main__":
 
     #get VAE hyperparameters from the command line
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n_leg_joints', type = int)
-    parser.add_argument('--epochs', type=int)
-    parser.add_argument('--lr', type=float)
-    parser.add_argument('--batch_size', type=int)
-    parser.add_argument('--w1', type=float)
-    parser.add_argument('--w2', type=float)
+    parser.add_argument('--n_leg_joints', type = int, default=36)
+    parser.add_argument('--epochs', type=int, default=250)
+    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--w1', type=float, default=0.005)
+    parser.add_argument('--w2', type=float, default=0.01)
     args = parser.parse_args()._get_kwargs()
     kwargs = {i: j for i, j in args if j is not None}
 
