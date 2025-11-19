@@ -74,9 +74,9 @@ if __name__ == "__main__":
     stylized_bgs = cnn_adain_model.predict(content=real_backgrounds, style=fake_zebra_images, alpha=alpha)
 
     #overlay the PNG blender zebras with the stylized backgrounds
-    fake_zebra_alphas.to(device)
-    stylized_bgs.to(device)
-    fake_zebra_images.to(device)
+    fake_zebra_alphas= fake_zebra_alphas.to(device)
+    stylized_bgs = stylized_bgs.to(device)
+    fake_zebra_images = fake_zebra_images.to(device)
 
     composite = fake_zebra_alphas * fake_zebra_images + (1 - fake_zebra_alphas) * stylized_bgs
 
