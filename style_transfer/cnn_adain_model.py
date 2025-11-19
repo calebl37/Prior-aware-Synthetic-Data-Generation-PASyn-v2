@@ -61,13 +61,51 @@ def conv_decoder(input_channels: int, output_channels: int, hidden_channels: lis
 
 
 def calc_content_loss(out_feat: torch.Tensor, target_feat: torch.Tensor) -> torch.Tensor:
+
+    '''
+    SSE between the encoded feature maps of the stylized output and the encoded feature maps of the original content image,
+    to enforce overall consistency between the original and stylized images
+
+    Args:
+        out_feat (tensor): shape (N, C, H, W) the encoded feature maps of the stylized output
+        target_feat (tensor): shape (N, C, H, W) the encoded feature maps of the original content image
+
+    Returns:
+        scalar SSE between out_feat and target_feat
+    '''
     return torch.mean((out_feat - target_feat) ** 2)
  
 def calc_style_loss(out_feats: torch.Tensor, style_feats: torch.Tensor) -> torch.Tensor:
+
+    '''
+    MSE between per-pixel encoding means of the original and stylized images and MSE between per-pixel encoding standard deviations 
+    of the original and stylized images, summed across all encoding layers,
+    to enforce style consistency between the original and stylized image encodings at every layer
+
+    Args:
+        out_feats (list): the encoding of the stylized output at each layer i, each of shape (N, C_i, H_i, W_i) 
+        style_feats (list): the encoding of the original content image at each layer i, each of shape (N, C_i, H_i, W_i) 
+
+    Returns:
+        scalar SSE between out_feat and target_feat
+    '''
+
+
     loss = 0.0
+
+    #for each layer of the encoder
     for of, sf in zip(out_feats, style_feats):
+
+        #compute the per-pixel mean and standard deviation of the stylized output encoding at that layer 
+        #shape (N, c_i, 1, 1)
         o_mean, o_std = of.mean([2, 3]), of.std([2, 3])
+
+        #compute the per-pixel mean and standard deviation of the original content image encoding at that layer
+        #shape (N, c_i, 1, 1) 
         s_mean, s_std = sf.mean([2, 3]), sf.std([2, 3])
+
+        #accumulate the MSE between the original and stylized output encoding per-pixel means 
+        #and the MSE between the original and stylized output encoding per-pixel standard deviations
         loss += torch.mean((o_mean - s_mean)**2) + torch.mean((o_std - s_std)**2)
     return loss
 
@@ -145,6 +183,7 @@ class ConvStyleTransfer:
         -epochs (int): number of forward and backward passes in the training loop
         -lr (float): learning rate for  CNN-encoder-decoder+AdaIN model training
         -batch_size (int): size per batch in training
+        -checkpoint_path (str): path to save model checkpoints
     '''
 
     def __init__(self, device: torch.device, height:int=64, width:int=64, input_channels: int=3, output_channels:int=32, hidden_channels: list = [8, 16], alpha: float=0.5, l_content_weight: float = 1.0, l_style_weight: float = 10.4,
