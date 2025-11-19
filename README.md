@@ -18,7 +18,7 @@ python generate.py --n_frames=3000
 
 # 4. Animate 3D model in Blender
 cd ../blender
-blender -b custom_zebra.blend -P animation_script.py -- --n_frames=100 --height=64 --width=64
+blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=128 --width=128
 
 # 5. Train the CNN based style transfer model
 cd style_transfer
@@ -124,16 +124,16 @@ python generate.py --n_frames=3000
 ### Step 3: Animate 3D Model in Blender
 
 Run the Blender animation script:
-sample terminal command for generating a 100 frame animation, each frame being a 64x64 PNG image, stored in the exact directory we want
+sample terminal command for generating a 3000 frame animation, each frame being a 128x128 PNG image, stored in the exact directory we want
 ```bash
 cd ../blender
-blender -b custom_zebra.blend -P animation_script.py -- --n_frames=100 --height=64 --width=64
+blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=128 --width=128
 ```
 
 **Parameters:**
-- `--n_frames`: Length of animation (default: 100)
-- `--height`: height of image in each rendered frame (default: 64)
-- `--width`: width of image in each rendered frame (default: 64)
+- `--n_frames`: Length of animation (default: 3000)
+- `--height`: height of image in each rendered frame (default: 128)
+- `--width`: width of image in each rendered frame (default: 128)
 
 **Output:**
 -  Rendered frames of animated zebra, 
