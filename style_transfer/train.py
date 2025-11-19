@@ -49,9 +49,9 @@ if __name__ == "__main__":
     if content_dir and style_dir:
         # Load paired content and style images
         print("Loading paired datasets...")
-        print(f"Loading content images from: {content_dir}")
+        print(f"Loading content images from: {os.path.join("data", content_dir)}")
         content_dataset = dset.ImageFolder(
-            root=content_dir,
+            root=os.path.join("data", content_dir),
             transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Resize((kwargs['height'], kwargs['width']))
@@ -62,9 +62,9 @@ if __name__ == "__main__":
             print("Not enough images")
             exit()
         
-        print(f"Loading style images from: {style_dir}")
+        print(f"Loading style images from: {os.path.join("data", style_dir)}")
         style_dataset = dset.ImageFolder(
-            root=style_dir,
+            root=os.path.join("data", style_dir),
             transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Resize((kwargs['height'], kwargs['width']))
@@ -86,9 +86,9 @@ if __name__ == "__main__":
     else:
         # Load single dataset and split into content/style
         train_dir = kwargs.pop('train_dir')
-        print(f"Loading training dataset from: {train_dir}")
+        print(f"Loading training dataset from: {os.path.join("data", train_dir)}")
         train_dataset = dset.ImageFolder(
-            root=train_dir,
+            root=os.path.join("data", train_dir),
             transform=transforms.Compose([
                 transforms.ToTensor(),
                 transforms.Resize((kwargs['height'], kwargs['width']))
