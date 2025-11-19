@@ -11,7 +11,17 @@ import matplotlib.pyplot as plt
 from cnn_adain_model import ConvStyleTransfer
 
 
-def rgba_loader(path):
+def rgba_loader(path: str) -> Image:
+    '''
+    Reads an PNG image file and converts to RGBA. 
+    The A (alpha) channel creates a binary PNG map where 0 = transparent and 1 = opaque
+
+    Args:
+        path (str): the filename of the image
+    
+    Returns:
+        RGBA PIL image
+    '''
     with open(path, 'rb') as f:
         img = Image.open(f)
         return img.convert("RGBA")
