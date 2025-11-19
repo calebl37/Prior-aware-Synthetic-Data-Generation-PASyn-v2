@@ -417,7 +417,7 @@ if __name__ == '__main__':
     np.save("blender_gt.npy", coordinates_2D_across_frames)
     
     #set the render output path (DO NOT CHANGE)
-    output_directory = os.path.join(os.path.dirname(os.path.dirname(bpy.data.filepath)), "style_transfer", "data", "synthetic", "zebra")
+    output_directory = os.path.join(os.path.dirname(os.path.dirname(bpy.data.filepath)), "style_transfer", "data", "synthetic_images", "zebra")
     scene.render.filepath = output_directory
 
     #set the render format to PNG images
