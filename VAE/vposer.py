@@ -140,7 +140,7 @@ class VPoserWrapper:
 
     '''
     def __init__(self, device: torch.device, n_leg_joints: int = 36, hidden_neurons: list = [32, 24], latent_dim: int = 20, lr:float=1e-3, 
-                 epochs: int=250, batch_size: int=128 , w1: float = 0.005, w2: float = 0.01):
+                 epochs: int=250, batch_size: int=128 , w1: float = 0.005, w2: float = 0.01, checkpoint_path: str="checkpoint.pt"):
         self.device = device
         self.n_leg_joints = n_leg_joints
 
@@ -152,12 +152,39 @@ class VPoserWrapper:
         self.batch_size = batch_size 
         self.w1 = w1 
         self.w2 = w2 
+        self.checkpoint_path = checkpoint_path
+        self.optimizer = torch.optim.Adam(self.model.parameters(), self.lr)
+
+
+    def load_checkpoint(self):
+        '''
+        Instantiates this model using a saved checkpoint if there is one
+        '''
+        #load checkpoint if there is one
+        if os.path.exists(self.checkpoint_path):
+            checkpoint = torch.load(self.checkpoint_path, map_location = self.device)
+                        
+            
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            
+            self.current_epoch = checkpoint['epoch']
+
+
+            self.train_losses = checkpoint['train_losses']
+            self.val_losses = checkpoint['val_losses']
+
+            #check for mismatching architecture with checkpoint
+            try:
+                self.model.load_state_dict(checkpoint['model_state_dict'])
+            except RuntimeError:
+                print("Error: Existing checkpoint has a different architecture than this instantiation. Either remove the old checkpoint and re-run, or re-instantiate this class with the same architecture used in the previous save.")
+                return 
 
 
     def fit(self, X_train: torch.Tensor, X_val: torch.Tensor) -> None:
 
         '''
-        Handles training of VPoser, using the specified hyperparameters, saves the model state peridiodically,
+        Handles training of VPoser, using the specified hyperparameters, saves the model state periodically,
         records train and validation loss over time
 
         Args:
@@ -173,7 +200,6 @@ class VPoserWrapper:
 
         #Custom loss function 
         criterion = VAELoss(w1=self.w1, w2=self.w2)
-        optimizer = torch.optim.Adam(self.model.parameters(), self.lr)
 
         train_tensor = TensorDataset(X_train)
         train_loader = DataLoader(train_tensor, batch_size=self.batch_size, shuffle=True)
@@ -182,24 +208,13 @@ class VPoserWrapper:
         self.train_losses = []
         self.val_losses = []
 
-        current_epoch = 0
+        self.current_epoch = 0
         
         #load checkpoint if there is one
-        if os.path.exists("checkpoint.pt"):
-            checkpoint = torch.load("checkpoint.pt", map_location = self.device)
-            
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            
-            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            
-            current_epoch = checkpoint['epoch']
-
-
-            self.train_losses = checkpoint['train_losses']
-            self.val_losses = checkpoint['val_losses']
+        self.load_checkpoint()
 
         #training loop
-        for i in range(current_epoch+1, self.epochs):
+        for i in range(self.current_epoch+1, self.epochs):
 
             self.model.train()
             total_loss = 0
@@ -214,8 +229,8 @@ class VPoserWrapper:
 
                 #backprop
                 loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+                self.optimizer.step()
+                self.optimizer.zero_grad()
 
                 total_loss += loss.item()
             
@@ -234,11 +249,11 @@ class VPoserWrapper:
                 {
                     'epoch': i,
                     'model_state_dict': self.model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
+                    'optimizer_state_dict': self.optimizer.state_dict(),
                     'train_losses': self.train_losses,
                     'val_losses': self.val_losses
                 },
-                "checkpoint.pt"
+                self.checkpoint_path
             )
 
             if (i + 1) % (self.epochs // 10) == 0:
@@ -257,9 +272,7 @@ class VPoserWrapper:
         '''
 
         #load checkpoint if there is one
-        if os.path.exists("checkpoint.pt"):
-            checkpoint = torch.load("checkpoint.pt", map_location = self.device)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
+        self.load_checkpoint()
 
         #get the direct VAE reconstruction with a single forward pass
         self.model.eval()
@@ -271,7 +284,7 @@ class VPoserWrapper:
 
         '''
         Uses the last saved checkpoint of VPoser to plot the train and test loss over each epoch so far. 
-        Saves plot in the same directoy
+        Saves plot in the same directory
 
         Args:
             None
@@ -280,15 +293,9 @@ class VPoserWrapper:
         '''
 
         #load checkpoint if there is one
-        if os.path.exists("checkpoint.pt"):
-            checkpoint = torch.load("checkpoint.pt", map_location = self.device)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            current_epoch = checkpoint['epoch']
+        self.load_checkpoint()
 
-            self.train_losses = checkpoint['train_losses']
-            self.val_losses = checkpoint['val_losses']
-
-        epochs = np.arange(current_epoch)
+        epochs = np.arange(self.current_epoch)
         plt.title("Train/Val VAE Loss over time for w1 = {} and w2 = {}".format(self.w1, self.w2))
         plt.plot(epochs, self.train_losses, c='r', label="Train")
         plt.plot(epochs, self.val_losses, c='b', label="Validation")
