@@ -239,7 +239,7 @@ class ConvStyleTransfer:
             #check for mismatching architecture with checkpoint
             try:
                 self.model.load_state_dict(checkpoint['model_state_dict'])
-            except RuntimeError:
+            except (RuntimeError, ValueError):
                 print("Error: Cannot train due to existing checkpoint having a different architecture than this instantiation. Either remove the old checkpoint and train from scratch, or re-instantiate this class with the same architecture used in the previous save.")
                 return 
         
