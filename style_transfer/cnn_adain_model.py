@@ -224,7 +224,7 @@ class ConvStyleTransfer:
         '''
 
         if os.path.exists(self.checkpoint_path):
-            checkpoint = torch.load(self.checkpoint_path, map_location = self.device)
+            checkpoint = torch.load(self.checkpoint_path, map_location = self.device, weights_only=False)
             
             self.current_epoch = checkpoint['epoch']
 

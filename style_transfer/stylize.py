@@ -39,6 +39,7 @@ if __name__ == "__main__":
     image_width = args.width
     alpha = args.alpha
 
+    print("Loading Blender Generated Zebra Images...")
     #load blender zebra images as RGBA
     synthetic_dataset = dset.ImageFolder(root=os.path.join("data", "synthetic_images"),
                                         loader=rgba_loader,
@@ -48,8 +49,10 @@ if __name__ == "__main__":
     #separate the RGB data from the alpha channel (PNG map 0 for transparent, 1 for opaque)
     fake_zebra_images = torch.stack([t[0][:3, :, :] for t in synthetic_dataset], dim = 0)
     fake_zebra_alphas = torch.stack([t[0][3, :, :] for t in synthetic_dataset], dim = 0).unsqueeze(dim=1)
+    print("...Done")
 
 
+    print("Loading real background images...")
     #load the real backgrounds as RGB
     background_dataset = dset.ImageFolder(root=os.path.join("data", "backgrounds"),
                             transform=transforms.Compose([
@@ -63,6 +66,8 @@ if __name__ == "__main__":
     if n_repeats > 1:
         real_backgrounds = fake_zebra_images.repeat(n_repeats,1, 1, 1)
     real_backgrounds = fake_zebra_images[:fake_zebra_images.shape[0]]
+
+    print("...done")
 
     #GPU support
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
