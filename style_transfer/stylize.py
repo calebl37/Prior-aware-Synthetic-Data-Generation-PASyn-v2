@@ -75,11 +75,11 @@ if __name__ == "__main__":
     #load instance of the CNN+AdAIN style transfer model
     cnn_adain_model = ConvStyleTransfer(device=device, height=image_height, width=image_width)
 
-    #stylize the real backgrounds (content) using the blender zebras as the style
-    stylized_bgs = cnn_adain_model.predict(content=real_backgrounds, style=fake_zebra_images, alpha=alpha)
+    #stylize the real backgrounds (content) using the blender zebras (with PNG alpha masking) as the style
+    fake_zebra_alphas= fake_zebra_alphas.to(device)
+    stylized_bgs = cnn_adain_model.predict(content=real_backgrounds, style=(fake_zebra_images * fake_zebra_alphas), alpha=alpha)
 
     #overlay the PNG blender zebras with the stylized backgrounds
-    fake_zebra_alphas= fake_zebra_alphas.to(device)
     stylized_bgs = stylized_bgs.to(device)
     fake_zebra_images = fake_zebra_images.to(device)
 
