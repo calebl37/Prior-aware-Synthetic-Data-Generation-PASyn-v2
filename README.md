@@ -187,7 +187,7 @@ python stylize.py --height=64 --width=64 --alpha=0.5
 | Aspect | Original PASyn | PASyn-v2 |
 |--------|---------------|----------|
 | **VAE Architecture** | Complex human_body_prior | Simple fully-connected |
-| **Style Transfer** | Transformer-based (StyTR-2) | CNN-based (AdaIN) |
+| **Style Transfer** | Transformer-based (StyTR-2) | CNN-based (VGG16 + AdaIN) |
 | **Dependencies** | 10+ heavy packages | 5 standard packages |
 | **Training Time** | ~1-2 days | ~30-60 minutes |
 | **Code Complexity** | High (nested configs) | Low (modular) |
@@ -225,10 +225,11 @@ Loss = w1 × KL_Divergence + w2 × Reconstruction_Loss
 
 ### Style Transfer (PASyn-v2)
 
-Uses **Adaptive Instance Normalization (AdaIN)**:
-- Encodes content and style images
-- Transfers style statistics (mean, std) to content
-- Decodes to produce stylized image
+-
+- Encoder (slice of VGG-16 with frozen weights pre-trained on ImageNet) encodes content and style images, both of which are normalized with the pixel-wise mean and standard deviation of ImageNet
+- Transfers style statistics (mean, std) to content via **Adaptive Instance Normalization (AdaIN)**
+- Decoder reconstructs stylized image from AdaIN features
+- Input and output image dimension consistency handled internally via reshaping blocks 
 
 **Advantages over transformer-based approach:**
 - Faster inference
