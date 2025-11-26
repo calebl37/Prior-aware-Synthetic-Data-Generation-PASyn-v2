@@ -57,15 +57,15 @@ if __name__ == "__main__":
     background_dataset = dset.ImageFolder(root=os.path.join("data", "backgrounds"),
                             transform=transforms.Compose([
                                 transforms.ToTensor(),
-                                transforms.Resize((image_height,image_width))]))
+                                transforms.RandomResizedCrop(size=(image_height, image_width), scale=(0.2, 0.4), ratio=(0.75, 1.33))]))
 
     real_backgrounds = torch.stack([t[0] for t in background_dataset], dim = 0)
 
     #repeat the backgrounds until there is one background for every blender zebra image
     n_repeats = math.ceil(real_backgrounds.shape[0] / fake_zebra_images.shape[0])
     if n_repeats > 1:
-        real_backgrounds = fake_zebra_images.repeat(n_repeats,1, 1, 1)
-    real_backgrounds = fake_zebra_images[:fake_zebra_images.shape[0]]
+        real_backgrounds = real_backgrounds.repeat(n_repeats,1, 1, 1)
+    real_backgrounds = real_backgrounds[:fake_zebra_images.shape[0]]
 
     print("...done")
 
@@ -76,30 +76,11 @@ if __name__ == "__main__":
     cnn_adain_model = ConvStyleTransfer(device=device, height=image_height, width=image_width)
 
     fake_zebra_alphas= fake_zebra_alphas.to(device)
-
-    #compute the number of non transparent pixels across channels, for each image
-    #(N, ) = (N, 3, H, W).flatten(start_dim = 1) = (N, 3 * H, W).sum(dim=1) 
-    non_transparent_pixels_per_image = (fake_zebra_alphas.repeat((1, 3, 1, 1)) > 0).flatten(start_dim=1).sum(dim=1)
-    
-    #compute the sum of non transparent pixels across channels, for each image
-    #(N, ) = (N, 3, H, W).flatten(start_dim = 1) = (N, 3 * H, W).sum(dim=1) 
-    total_non_transparent_color_per_image = fake_zebra_images.flatten(start_dim=1).sum(dim=1)
-
-    #compute the average of non transparent pixels across channels, for each image
-    #(N, 3, 1, 1) = (N, ) / (N, ).reshape(-1,1,1,1) = (N, 1,1,1).repeat(1,3,1,1)
-    mean_non_transparent_color_per_image = (total_non_transparent_color_per_image / non_transparent_pixels_per_image).reshape(-1,1,1,1).repeat(1,3,1,1)
-    
-    #imputation of the mean - for each image, fill all transparent pixels with their non-transparent mean so they don't dominate the style
-    filled = fake_zebra_images * fake_zebra_alphas + mean_non_transparent_color_per_image * (1 - fake_zebra_alphas)
-
-    #stylize the real backgrounds (content) using the blender zebras
-    stylized_bgs = cnn_adain_model.predict(content=real_backgrounds, style=filled, alpha=alpha)
-
-    #overlay the PNG blender zebras with the stylized backgrounds
-    stylized_bgs = stylized_bgs.to(device)
     fake_zebra_images = fake_zebra_images.to(device)
 
-    composite = fake_zebra_alphas * fake_zebra_images + (1 - fake_zebra_alphas) * stylized_bgs
+    stylized_zebras = cnn_adain_model.predict(content=fake_zebra_images, style=real_backgrounds, alpha=alpha)
+    composite = fake_zebra_alphas * stylized_zebras + (1 - fake_zebra_alphas) * real_backgrounds
+
 
     #save tensor format
     torch.save(composite, 'stylized_images.pt')
