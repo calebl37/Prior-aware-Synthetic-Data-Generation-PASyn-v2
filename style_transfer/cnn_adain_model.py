@@ -204,7 +204,7 @@ class ConvStyleTransfer:
 
         #self.decoder = conv_decoder(output_channels, input_channels, hidden_channels)
 
-        self.decoder = conv_decoder(128, output_channels, [16])
+        self.decoder = conv_decoder(128, input_channels, [16])
 
         FIXED_SIZE = 64
 
