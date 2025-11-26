@@ -178,8 +178,6 @@ class ConvStyleTransfer:
         -height (int): input image height to the CNN-encoder-decoder+AdaIN
         -width (int): input image width to the CNN-encoder-decoder+AdaIN
         -input_channels (int): number of channels in the input image (3 for RGB)
-        -output_channels (int): number of channels in the encoder output
-        -hidden_channels (list): number of channels in each intermediary convolutional layer of the encoder (reversed for the decoder)
         -alpha (float): strength of AdAIN applied to the encoder output before being passed to decoder
         -l_content_weight (float): the weight of the content loss term in the custom loss function
         -l_style_weight (float): the weight of the style loss term in the custom loss function
@@ -189,25 +187,27 @@ class ConvStyleTransfer:
         -checkpoint_path (str): path to save model checkpoints
     '''
 
-    def __init__(self, device: torch.device, height:int=64, width:int=64, input_channels: int=3, output_channels:int=32, hidden_channels: list = [8, 16], alpha: float=0.5, l_content_weight: float = 1.0, l_style_weight: float = 10.4,
+    def __init__(self, device: torch.device, height:int=64, width:int=64, input_channels: int=3, alpha: float=0.5, l_content_weight: float = 5.0, l_style_weight: float = 10,
                  epochs:int=10, lr:float=1e-3, batch_size: int=64, checkpoint_path: str = "checkpoint.pt"):
         self.device = device
         self.height = height
         self.width = width
             
-        #self.encoder = conv_encoder(input_channels, output_channels, hidden_channels)
-
+        #use snippet of VGG-16 (pretrained on imagenet) as the encoder
         self.encoder = vgg16_model.features[:10]
 
+        #freeze encoder weights
         for p in self.encoder.parameters():
             p.requires_grad = False
 
-        #self.decoder = conv_decoder(output_channels, input_channels, hidden_channels)
+        #store the pixel mean and standard deviation of ImageNet
+        self.vgg_mean = torch.tensor([0.485, 0.456, 0.406], device=self.device).view(1,3,1,1)
+        self.vgg_std  = torch.tensor([0.229, 0.224, 0.225], device=self.device).view(1,3,1,1)
 
+        #decode from the snippet of VGG
         self.decoder = conv_decoder(128, input_channels, [16])
 
         FIXED_SIZE = 64
-
         #we need the encoder to input size 64x64 and the decoder to output size 64x64, so reshape if needed
         if self.height != FIXED_SIZE or self.width != FIXED_SIZE:
             self.reshape_input_block = reshape_image_block(self.height, self.width, 3, FIXED_SIZE, FIXED_SIZE, 3)
@@ -229,6 +229,17 @@ class ConvStyleTransfer:
 
         self.optimizer = torch.optim.Adam(self.model.parameters(), self.lr)
 
+    def normalize_vgg(self, x: torch.Tensor) -> torch.Tensor:
+        '''
+        Normalizes the given RGB images according to the mean and standard deviation of ImageNet
+        
+        Args:
+            x: Images of shape (N, 3, H, W)
+
+        Returns:
+            Normalized images of shape (N, 3, H, W)
+        '''
+        return (x - self.vgg_mean) / self.vgg_std
     
     def load_checkpoint(self):
 
@@ -290,10 +301,10 @@ class ConvStyleTransfer:
             
             epoch_losses = []
             for content, style in dataloader:
-    
-                # Encode
-                c_feat: torch.Tensor  = self.encoder(content)
-                s_feat: torch.Tensor  = self.encoder(style)
+
+                # Encode (must normalize with ImageNet first)
+                c_feat: torch.Tensor  = self.encoder(self.normalize_vgg(content))
+                s_feat: torch.Tensor  = self.encoder(self.normalize_vgg(style))
 
                 # AdaIN
                 t_feat = c_feat * (1-self.alpha) + self.alpha * adain(c_feat, s_feat)
@@ -369,9 +380,10 @@ class ConvStyleTransfer:
         self.model.eval()
     
         with torch.no_grad():
-            # Encode
-            c_feat = self.encoder(content)
-            s_feat = self.encoder(style)
+            
+            # Encode (must normalize with ImageNet first)
+            c_feat = self.encoder(self.normalize_vgg(content))
+            s_feat = self.encoder(self.normalize_vgg(style))
 
             # AdaIN
             t_feat = (1-alpha) * c_feat + alpha * adain(c_feat, s_feat)
