@@ -14,21 +14,21 @@ pip install -r requirements.txt
 
 # 2. Train the VAE model
 cd VAE
-python train.py --epochs=250 --batch_size=128 --lr=0.001 --w1=0.005 --w2=0.01
+python train.py --epochs=250 --batch_size=64 --lr=0.001 --w1=0.005 --w2=0.01
 
 # 3. Generate new leg poses
 python generate.py --n_frames=3000
 
 # 4. Animate 3D model in Blender
 cd ../blender
-blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=128 --width=128
+blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=64 --width=64
 
 # 5. Train the CNN based style transfer model
 cd style_transfer
-python train.py --epochs 5 --height=128 --width=128 --lr 0.001 --batch_size 128 --alpha=0.1 --l_content_weight=1 --l_style_weight=10.4 --train_dir=celebA
+python train.py --epochs 10 --height=64 --width=64 --lr 0.01 --batch_size 64 --alpha=0.5 --l_content_weight=5 --l_style_weight=10 --train_dir=celebA
 
 # 6. Generate stylized zebra
-python stylize.py --height=128 --width=128 --alpha=0.1
+python stylize.py --height=64 --width=64 --alpha=0.5
 ```
 
 **Expected Output:**
@@ -95,12 +95,12 @@ First, train the VAE on existing pose data:
 
 ```bash
 cd VAE
-python train.py --epochs=250 --batch_size=128 --lr 0.001 --w1=0.005 --w2=0.01 --n_leg_joints=36
+python train.py --epochs=250 --batch_size=64 --lr 0.001 --w1=0.005 --w2=0.01 --n_leg_joints=36
 ```
 
 **Parameters:**
 - `--epochs`: Number of training epochs (default: 250)
-- `--batch_size`: Batch size for training (default: 128)
+- `--batch_size`: Batch size for training (default: 64)
 - `--lr`: Learning rate (default: 0.001)
 - `--w1`: Weight for KL divergence loss (default: 0.005)
 - `--w2`: Weight for reconstruction loss (default: 0.01)
@@ -127,16 +127,16 @@ python generate.py --n_frames=3000
 ### Step 3: Animate 3D Model in Blender
 
 Run the Blender animation script:
-sample terminal command for generating a 3000 frame animation, each frame being a 128x128 PNG image, stored in the exact directory we want
+sample terminal command for generating a 3000 frame animation, each frame being a 64x64 PNG image, stored in the exact directory we want
 ```bash
 cd ../blender
-blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=128 --width=128
+blender -b custom_zebra.blend -P animation_script.py -- --n_frames=3000 --height=64 --width=64
 ```
 
 **Parameters:**
 - `--n_frames`: Length of animation (default: 3000)
-- `--height`: height of image in each rendered frame (default: 128)
-- `--width`: width of image in each rendered frame (default: 128)
+- `--height`: height of image in each rendered frame (default: 64)
+- `--width`: width of image in each rendered frame (default: 64)
 
 **Output:**
 -  Rendered frames of animated zebra, 
@@ -148,20 +148,37 @@ Train the style transfer model to stylize a given content image with a given sty
 
 ```bash
 cd ../style_transfer
-python train.py --epochs 5 --height=128 --width=128 --lr 0.001 --batch_size 128 --alpha=0.1 --l_content_weight=1 --l_style_weight=10.4 --train_dir=celebA
+python train.py --epochs 10 --height=64 --width=64 --lr 0.01 --batch_size 64 --alpha=0.5 --l_content_weight=5 --l_style_weight=10 --content_dir=synthetic_images
 ```
+**Parameters:**
+- `--height`: input image height to the style transfer model (default: 64)
+- `--width`: input image width to the style transfer model (default: 64)
+- `--epochs`: Number of training epochs (default: 10)
+- `--batch_size`: Batch size for training (default: 128)
+- `--lr`: Learning rate (default: 0.01)
+- `--l_content_weight`: Weight for content divergence loss (default: 5)
+- `--l_style_weight`: Weight for style loss (default: 10)
+- `--alpha`: controls the strength of zebra stylization applied to the background (0 to 1, with 1 being strongest) (default: 0.5)
+- `--content_dir`: path to content nested training image folder inside data folder
+- `--style_dir`: path to style nested training image folder inside data folder
+- `--train_dir`: path to content+style nested training image folder inside data folder
+
+**Output:**
+- `checkpoint.pt`: Trained model checkpoint
+- `losses.jpg`: Training loss plot
+
 ### Step 5: Apply Style Transfer 
 
 Apply style transfer to make backgrounds more realistic:
 
 ```bash
 cd ../style_transfer
-python stylize.py --height=128 --width=128 --alpha=0.1
+python stylize.py --height=64 --width=64 --alpha=0.5
 ```
 **Parameters:**
-- `--height`: desired height of stylized image (must be consistent with the dimensions of the style transfer model) (default: 128)
-- `--width`: desired width of stylized image (must be consistent with the dimensions of the style transfer model) (default: 128)
-- `--alpha`: controls the strength of zebra stylization applied to the background (0 to 1, with 1 being strongest) (default: 0.1)
+- `--height`: desired height of stylized image (must be consistent with the dimensions of the style transfer model) (default: 64)
+- `--width`: desired width of stylized image (must be consistent with the dimensions of the style transfer model) (default: 64)
+- `--alpha`: controls the strength of zebra stylization applied to the background (0 to 1, with 1 being strongest) (default: 0.5)
 
 ## Comparison: Original PASyn vs PASyn-v2
 
