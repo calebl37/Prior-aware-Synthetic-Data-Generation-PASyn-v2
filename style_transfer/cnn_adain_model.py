@@ -195,7 +195,7 @@ class ConvStyleTransfer:
             
         self.encoder = conv_encoder(input_channels, output_channels, hidden_channels)
 
-        self.decoder = conv_decoder(output_channels, input_channels, hidden_channels[::-1])
+        self.decoder = conv_decoder(output_channels, input_channels, hidden_channels)
 
         FIXED_SIZE = 64
 
@@ -207,8 +207,6 @@ class ConvStyleTransfer:
                                        self.decoder, self.reshape_output_block).to(self.device)
         else:
             self.model = nn.Sequential(self.encoder, self.decoder).to(self.device)
-
-        self.model = nn.Sequential(self.encoder, self.decoder).to(self.device)
 
         self.epochs = epochs
         self.lr = lr
