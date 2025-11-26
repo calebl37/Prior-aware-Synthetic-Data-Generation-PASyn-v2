@@ -249,8 +249,8 @@ if __name__ == '__main__':
     #get the number of animation frames and render size from the command line
     parser = argparse.ArgumentParser()
     parser.add_argument('--n_frames', type=int, default=3000)
-    parser.add_argument('--height', type=int, default=128)
-    parser.add_argument('--width', type=int, default=128)
+    parser.add_argument('--height', type=int, default=64)
+    parser.add_argument('--width', type=int, default=64)
     
     argv = sys.argv
 
