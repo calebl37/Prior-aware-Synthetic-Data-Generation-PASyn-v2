@@ -45,4 +45,4 @@ if __name__ == "__main__":
 
     #save output to the directory with the blender script
     root = os.path.dirname(os.getcwd())
-    np.save(os.path.join(root, "blender", "my_vae_poses.npy"), generated_leg_poses)
+    np.save(os.path.join(root, "blender", "my_vae_poses.npy"), generated_leg_poses.cpu())
