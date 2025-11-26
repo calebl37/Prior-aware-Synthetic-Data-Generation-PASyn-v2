@@ -4,6 +4,8 @@ import torch.nn as nn
 import os
 import matplotlib.pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
+import torchvision.models as models
+vgg16_model = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_V1)
 
 
 def conv_encoder(input_channels: int, output_channels: int, hidden_channels: list[int], add_bias = False) -> nn.Module:
@@ -193,9 +195,16 @@ class ConvStyleTransfer:
         self.height = height
         self.width = width
             
-        self.encoder = conv_encoder(input_channels, output_channels, hidden_channels)
+        #self.encoder = conv_encoder(input_channels, output_channels, hidden_channels)
 
-        self.decoder = conv_decoder(output_channels, input_channels, hidden_channels)
+        self.encoder = vgg16_model.features[:10]
+
+        for p in self.encoder.parameters():
+            p.requires_grad = False
+
+        #self.decoder = conv_decoder(output_channels, input_channels, hidden_channels)
+
+        self.decoder = conv_decoder(128, output_channels, [16])
 
         FIXED_SIZE = 64
 
@@ -207,6 +216,8 @@ class ConvStyleTransfer:
                                        self.decoder, self.reshape_output_block).to(self.device)
         else:
             self.model = nn.Sequential(self.encoder, self.decoder).to(self.device)
+
+        
 
         self.epochs = epochs
         self.lr = lr
