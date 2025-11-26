@@ -46,6 +46,7 @@ if __name__ == "__main__":
 
     content_dir = kwargs.pop('content_dir')
     style_dir = kwargs.pop('style_dir')
+    train_dir = kwargs.pop('train_dir')
     if content_dir and style_dir:
         # Load paired content and style images
         print("Loading paired datasets...")
@@ -85,7 +86,6 @@ if __name__ == "__main__":
             
     else:
         # Load single dataset and split into content/style
-        train_dir = kwargs.pop('train_dir')
         print(f"Loading training dataset from: {os.path.join('data', train_dir)}")
         train_dataset = dset.ImageFolder(
             root=os.path.join('data', train_dir),

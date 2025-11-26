@@ -9,6 +9,40 @@ import argparse
 import math
 import matplotlib.pyplot as plt
 from cnn_adain_model import ConvStyleTransfer
+from skimage.color import rgb2gray
+from skimage.feature import canny
+from skimage.filters._gaussian import gaussian
+from skimage.util import random_noise
+
+def textureify_background(bg: torch.Tensor):
+    """
+    bg: Tensor of shape (3, H, W), range [0,1]
+    returns: textured background (3, H, W), range [0,1]
+    """
+
+    #reshape to (H, W, 3)
+    bg = bg.permute(1,2,0)
+
+    # 1. Grayscale for edge detection
+    gray = rgb2gray(bg)
+
+    # 2. Canny edges
+    edges = canny(gray, sigma=2.0)       # boolean mask
+
+    # 3. Convert edges to float and blur slightly
+    edges_float = gaussian(edges.astype(float), sigma=1.0)
+
+    # 4. Random noise injection
+    noisy = random_noise(bg, mode='gaussian', var=0.005)
+
+    # 5. Combine everything into a texture map
+    texture_map = (0.5 * noisy) + (0.5 * np.repeat(edges_float[..., None], 3, axis=2))
+
+    # 6. Rescale to [0,1]
+    texture_map = np.clip(texture_map, 0.0, 1.0)
+
+    return torch.Tensor(texture_map).permute(2, 0, 1)
+
 
 
 def rgba_loader(path: str) -> Image:
@@ -57,7 +91,7 @@ if __name__ == "__main__":
     background_dataset = dset.ImageFolder(root=os.path.join("data", "backgrounds"),
                             transform=transforms.Compose([
                                 transforms.ToTensor(),
-                                transforms.RandomResizedCrop(size=(image_height, image_width), scale=(0.2, 0.4), ratio=(0.75, 1.33))]))
+                                transforms.Resize((image_height, image_width))]))
 
     real_backgrounds = torch.stack([t[0] for t in background_dataset], dim = 0)
 
@@ -71,14 +105,17 @@ if __name__ == "__main__":
 
     #GPU support
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    fake_zebra_alphas= fake_zebra_alphas.to(device)
+    fake_zebra_images = fake_zebra_images.to(device)
 
     #load instance of the CNN+AdAIN style transfer model
     cnn_adain_model = ConvStyleTransfer(device=device, height=image_height, width=image_width)
 
-    fake_zebra_alphas= fake_zebra_alphas.to(device)
-    fake_zebra_images = fake_zebra_images.to(device)
+    
+    #stylize zebras with the background using the trained style transfer model
+    stylized_zebras = cnn_adain_model.predict(content=fake_zebra_images, style=torch.rand(fake_zebra_images.shape), alpha=alpha)
 
-    stylized_zebras = cnn_adain_model.predict(content=fake_zebra_images, style=real_backgrounds, alpha=alpha)
+    #overlay the stylized zebras over the original backgrounds
     composite = fake_zebra_alphas * stylized_zebras + (1 - fake_zebra_alphas) * real_backgrounds
 
 
