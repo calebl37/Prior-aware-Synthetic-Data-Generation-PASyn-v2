@@ -75,9 +75,25 @@ if __name__ == "__main__":
     #load instance of the CNN+AdAIN style transfer model
     cnn_adain_model = ConvStyleTransfer(device=device, height=image_height, width=image_width)
 
-    #stylize the real backgrounds (content) using the blender zebras (with PNG alpha masking) as the style
     fake_zebra_alphas= fake_zebra_alphas.to(device)
-    stylized_bgs = cnn_adain_model.predict(content=real_backgrounds, style=(fake_zebra_images * fake_zebra_alphas), alpha=alpha)
+
+    #compute the number of non transparent pixels across channels, for each image
+    #(N, ) = (N, 3, H, W).flatten(start_dim = 1) = (N, 3 * H, W).sum(dim=1) 
+    non_transparent_pixels_per_image = (fake_zebra_alphas.repeat((1, 3, 1, 1)) > 0).flatten(start_dim=1).sum(dim=1)
+    
+    #compute the sum of non transparent pixels across channels, for each image
+    #(N, ) = (N, 3, H, W).flatten(start_dim = 1) = (N, 3 * H, W).sum(dim=1) 
+    total_non_transparent_color_per_image = fake_zebra_images.flatten(start_dim=1).sum(dim=1)
+
+    #compute the average of non transparent pixels across channels, for each image
+    #(N, 3, 1, 1) = (N, ) / (N, ).reshape(-1,1,1,1) = (N, 1,1,1).repeat(1,3,1,1)
+    mean_non_transparent_color_per_image = (total_non_transparent_color_per_image / non_transparent_pixels_per_image).reshape(-1,1,1,1).repeat(1,3,1,1)
+    
+    #imputation of the mean - for each image, fill all transparent pixels with their non-transparent mean so they don't dominate the style
+    filled = fake_zebra_images * fake_zebra_alphas + mean_non_transparent_color_per_image * (1 - fake_zebra_alphas)
+
+    #stylize the real backgrounds (content) using the blender zebras
+    stylized_bgs = cnn_adain_model.predict(content=real_backgrounds, style=filled, alpha=alpha)
 
     #overlay the PNG blender zebras with the stylized backgrounds
     stylized_bgs = stylized_bgs.to(device)
