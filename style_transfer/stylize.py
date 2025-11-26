@@ -31,9 +31,9 @@ if __name__ == "__main__":
 
     #get the sdimensions of the image and the blending strength parameter from the command line
     parser = argparse.ArgumentParser()
-    parser.add_argument('--height', type=int, default=128)
-    parser.add_argument('--width', type=int, default=128)
-    parser.add_argument('--alpha', type=float, default=0.1)
+    parser.add_argument('--height', type=int, default=64)
+    parser.add_argument('--width', type=int, default=64)
+    parser.add_argument('--alpha', type=float, default=0.5)
     args = parser.parse_args()
     image_height = args.height
     image_width = args.width
