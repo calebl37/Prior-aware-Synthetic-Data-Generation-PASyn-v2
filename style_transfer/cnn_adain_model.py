@@ -66,7 +66,7 @@ def conv_decoder(input_channels: int, output_channels: int, hidden_channels: lis
 def calc_content_loss(out_feat: torch.Tensor, target_feat: torch.Tensor) -> torch.Tensor:
 
     '''
-    SSE between the encoded feature maps of the stylized output and the encoded feature maps of the original content image,
+    MSE between the encoded feature maps of the stylized output and the encoded feature maps of the original content image,
     to enforce overall consistency between the original and stylized images
 
     Args:
@@ -74,7 +74,7 @@ def calc_content_loss(out_feat: torch.Tensor, target_feat: torch.Tensor) -> torc
         target_feat (tensor): shape (N, C, H, W) the encoded feature maps of the original content image
 
     Returns:
-        scalar SSE between out_feat and target_feat
+        scalar MSE between out_feat and target_feat
     '''
     return torch.mean((out_feat - target_feat) ** 2)
  
