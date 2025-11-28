@@ -81,16 +81,16 @@ def calc_content_loss(out_feat: torch.Tensor, target_feat: torch.Tensor) -> torc
 def calc_style_loss(out_feats: torch.Tensor, style_feats: torch.Tensor) -> torch.Tensor:
 
     '''
-    MSE between per-pixel encoding means of the original and stylized images and MSE between per-pixel encoding standard deviations 
-    of the original and stylized images, summed across all encoding layers,
-    to enforce style consistency between the original and stylized image encodings at every layer
+    MSE between per-pixel encoding means of the original style and stylized images and MSE between per-pixel encoding standard deviations 
+    of the original style and stylized images, summed across all encoding layers,
+    to enforce style consistency between the style reference and stylized image encodings at every layer
 
     Args:
         out_feats (list): the encoding of the stylized output at each layer i, each of shape (N, C_i, H_i, W_i) 
-        style_feats (list): the encoding of the original content image at each layer i, each of shape (N, C_i, H_i, W_i) 
+        style_feats (list): the encoding of the style image at each layer i, each of shape (N, C_i, H_i, W_i) 
 
     Returns:
-        scalar SSE between out_feat and target_feat
+        scalar cumulative MSE between out_feat and style_feat mean and standard deviations
     '''
 
 
